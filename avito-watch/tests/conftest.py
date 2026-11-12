@@ -1,7 +1,9 @@
 """Общие фикстуры: конфиг во временной папке, БД, фейковые движок и Telegram."""
 from __future__ import annotations
 
+import asyncio
 import sys
+import time
 from pathlib import Path
 
 import pytest
@@ -16,6 +18,17 @@ from avito_watch.models import FetchResult, Listing, PageState  # noqa: E402
 from avito_watch.parser.state import detect_state  # noqa: E402
 
 FIXTURES = Path(__file__).parent / "fixtures"
+
+
+async def wait_until(predicate, *, timeout: float = 5.0, interval: float = 0.02):
+    """Ждём условие вместо фиксированного sleep — тесты не зависят от скорости машины."""
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        value = predicate()
+        if value:
+            return value
+        await asyncio.sleep(interval)
+    raise AssertionError(f"условие не выполнилось за {timeout} с")
 
 
 def load_html(name: str) -> str:
@@ -52,6 +65,12 @@ def cfg(tmp_path) -> Config:
     config.telegram.admin_ids = ["100500"]
     config.captcha.poll_interval_sec = 0.05
     config.captcha.manual_wait_sec = 2
+    # все паузы взаимодействия со страницей — минимальные, чтобы тесты шли секунды
+    config.captcha.submit_wait_sec = 0.05
+    config.captcha.slider_settle_sec = 0.05
+    config.captcha.reload_wait_sec = 0.05
+    config.captcha.widget_timeout_sec = 0.3
+    config.captcha.click_wait_sec = 0.02
     config.captcha.ocr_backend = "none"
     config.watch.enrich_items = False
     config.watch.enrich_delay_sec = 0
@@ -77,6 +96,9 @@ class FakeTelegram:
         self.sent_count = 0
         self.error_count = 0
         self.enabled = True
+        self.callbacks: list[tuple[str, str]] = []
+        self.api_calls: list[tuple[str, dict | None, dict | None]] = []
+        self.updates: list[dict] = []
 
     async def start(self): pass
     async def close(self): pass
@@ -96,6 +118,20 @@ class FakeTelegram:
 
     async def health(self):
         return {}
+
+    async def answer_callback(self, callback_id, text=""):
+        self.callbacks.append((callback_id, text))
+
+    async def api(self, method, payload=None, *, files=None, retries=3):
+        self.api_calls.append((method, payload, files))
+        return {"message_id": len(self.messages) + 1}
+
+    async def get_updates(self, offset=None, timeout=25):
+        batch, self.updates = self.updates, []
+        return batch
+
+    async def get_me(self):
+        return {"username": "avito_watch_test_bot", "id": 42}
 
 
 class FakeEngine(Engine):

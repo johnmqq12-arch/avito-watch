@@ -6,7 +6,7 @@ import pytest
 from avito_watch.captcha.manual import ManualCenter
 from avito_watch.captcha.solver import CaptchaSolver
 from avito_watch.models import CaptchaVariant
-from conftest import FakePage, load_html
+from tests.conftest import FakePage, load_html, wait_until
 
 
 class FakeOCR:
@@ -44,9 +44,8 @@ async def test_wrong_ocr_falls_back_to_manual_answer(cfg, db, fake_telegram, man
     solver = CaptchaSolver(cfg, db, fake_telegram, manual, ocr=FakeOCR(["wrong1"]))
 
     async def user_answers():
-        await asyncio.sleep(0.2)
-        pending = manual.latest
-        assert pending is not None
+        # пользователь отвечает, когда бот прислал капчу и ждёт ответа
+        await wait_until(lambda: manual.latest is not None)
         manual.push_answer("right1")
 
     task = asyncio.create_task(user_answers())
@@ -64,7 +63,7 @@ async def test_manual_browser_solve_detected(cfg, db, fake_telegram, manual):
     solver = CaptchaSolver(cfg, db, fake_telegram, manual, ocr=FakeOCR([]))
 
     async def user_solves_in_browser():
-        await asyncio.sleep(0.2)
+        await wait_until(lambda: manual.latest is not None)
         page._html = load_html("listing_state")   # человек прошёл капчу в noVNC
 
     task = asyncio.create_task(user_solves_in_browser())
@@ -91,7 +90,7 @@ async def test_skip_button(cfg, db, fake_telegram, manual):
     solver = CaptchaSolver(cfg, db, fake_telegram, manual, ocr=FakeOCR([]))
 
     async def user_skips():
-        await asyncio.sleep(0.15)
+        await wait_until(lambda: manual.latest is not None)
         manual.mark_skip()
 
     task = asyncio.create_task(user_skips())

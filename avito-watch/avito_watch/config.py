@@ -92,6 +92,12 @@ class CaptchaConfig:
     # --- ручное решение ---
     manual_url: str = ""                    # ссылка на noVNC, которую бот пришлёт в кнопке
     manual_hint: str = ""                   # свой текст инструкции
+    # --- тайминги взаимодействия со страницей, сек ---
+    submit_wait_sec: float = 3.0            # ждём вердикт файрвола после отправки ответа
+    slider_settle_sec: float = 3.5          # ждём вердикт GeeTest после рывка слайдера
+    reload_wait_sec: float = 2.5            # ждём загрузку страницы после reload
+    widget_timeout_sec: float = 12.0        # сколько ждём появления виджета капчи
+    click_wait_sec: float = 2.0             # пауза после клика «Продолжить» / обновления пазла
 
 
 @dataclass

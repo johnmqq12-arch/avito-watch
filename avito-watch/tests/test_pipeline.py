@@ -5,7 +5,7 @@ from avito_watch.captcha.manual import ManualCenter
 from avito_watch.captcha.solver import CaptchaSolver
 from avito_watch.models import PageState
 from avito_watch.pipeline import Pipeline
-from conftest import FakeEngine, load_html, make_card, make_listing_page
+from tests.conftest import FakeEngine, load_html, make_card, make_listing_page
 
 URL = "https://www.avito.ru/moskva?q=iphone"
 
@@ -39,9 +39,12 @@ async def test_new_listing_is_sent_once(cfg, db, fake_engine, fake_telegram, sou
     pipeline = Pipeline(cfg, db, fake_engine, fake_telegram)
     await pipeline.check_source(source)
 
+    # вставляем новую карточку в конец выдачи — до карусели «Подобрали для вас»
     html = load_html("listing_state").replace(
-        "</div>\n<div data-marker=\"itemsCarousel\">",
-        make_card("7654321999", "iPhone 15 Pro Max 512", 110000) + "</div>\n<div data-marker=\"itemsCarousel\">")
+        '<div data-marker="itemsCarousel">',
+        make_card("7654321999", "iPhone 15 Pro Max 512", 110000) + '<div data-marker="itemsCarousel">',
+        1)
+    assert "7654321999" in html
     fake_engine.default = html
     report = await pipeline.check_source(source)
     assert report.new == 1
@@ -73,7 +76,8 @@ async def test_small_price_change_ignored(cfg, db, fake_engine, fake_telegram, s
 
 
 async def test_keyword_and_price_filters(cfg, db, fake_engine, fake_telegram):
-    source = db.add_source(URL, name="фильтры", keywords_exclude=["коробка"], max_price=60000)
+    # ключевые слова — подстроки: для русского языка задаём основу («коробк», а не «коробка»)
+    source = db.add_source(URL, name="фильтры", keywords_exclude=["коробк"], max_price=60000)
     pipeline = Pipeline(cfg, db, fake_engine, fake_telegram)
     report = await pipeline.check_source(source)
     # из 4 объявлений: «коробка» отсеяна словом, iPhone 15 Plus (55500) проходит,

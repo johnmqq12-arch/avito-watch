@@ -125,7 +125,7 @@ class CaptchaSolver:
                 return SolveResult(solved=False, method="ocr-local", attempts=attempts,
                                    detail="не нашёл поле ввода капчи")
             await page.submit_firewall_form(input_selector=_IMAGE_INPUT)
-            await asyncio.sleep(3.0)
+            await asyncio.sleep(self.cfg.captcha.submit_wait_sec)
             if await self._passed(page):
                 self._store_sample(challenge, answer)
                 return SolveResult(solved=True, method="ocr-local", attempts=attempts,
@@ -140,8 +140,12 @@ class CaptchaSolver:
         last_detail = "виджет слайдера не появился"
         for attempt in range(max(1, ccfg.slider_max_tries)):
             attempts += 1
+            if await self._passed(page):
+                return SolveResult(solved=True, method="manual", attempts=attempts,
+                                   detail="капча пройдена человеком, пока искали виджет")
             await self._click_continue(page)
-            slider_selector = await self._wait_any(page, _SLIDER_SELECTORS, timeout=12)
+            slider_selector = await self._wait_any(page, _SLIDER_SELECTORS,
+                                                  timeout=ccfg.widget_timeout_sec)
             if not slider_selector:
                 last_detail = "не дождался слайдер GeeTest"
                 await self._refresh_puzzle(page)
@@ -187,7 +191,7 @@ class CaptchaSolver:
                      slider_box["y"] + slider_box["height"] / 2)
             log.info("Слайдер: метод=%s уверенность=%.2f смещение=%.1fpx", gap.method, gap.confidence, distance)
             await page.drag(start, distance, duration=1.0 + 0.25 * attempt)
-            await asyncio.sleep(3.5)
+            await asyncio.sleep(ccfg.slider_settle_sec)
             if await self._passed(page):
                 return SolveResult(solved=True, method="slider-cv", attempts=attempts,
                                    detail=f"{gap.method}, conf={gap.confidence:.2f}, {distance:.0f}px")
@@ -196,10 +200,11 @@ class CaptchaSolver:
         return SolveResult(solved=False, method="slider-cv", attempts=attempts, detail=last_detail)
 
     async def _click_continue(self, page: PageAdapter) -> None:
+        pause = self.cfg.captcha.click_wait_sec
         for selector in _CONTINUE_SELECTORS:
             if await page.is_visible(selector):
                 await page.click(selector)
-                await asyncio.sleep(2.0)
+                await asyncio.sleep(pause)
                 return
         clicked = await page.evaluate("""() => {
             const btn = [...document.querySelectorAll('button, input[type=submit], a')]
@@ -208,23 +213,25 @@ class CaptchaSolver:
             return false;
         }""")
         if clicked:
-            await asyncio.sleep(2.0)
+            await asyncio.sleep(pause)
 
     async def _refresh_puzzle(self, page: PageAdapter) -> None:
+        pause = self.cfg.captcha.click_wait_sec
         for selector in _REFRESH_SELECTORS:
             if await page.is_visible(selector):
                 await page.click(selector)
-                await asyncio.sleep(2.0)
+                await asyncio.sleep(pause)
                 return
-        await asyncio.sleep(1.5)
+        await asyncio.sleep(pause * 0.75)
 
     async def _wait_any(self, page: PageAdapter, selectors: tuple[str, ...], timeout: float) -> str | None:
         deadline = time.time() + timeout
+        poll = max(0.05, min(0.6, self.cfg.captcha.poll_interval_sec))
         while time.time() < deadline:
             for selector in selectors:
                 if await page.is_visible(selector):
                     return selector
-            await asyncio.sleep(0.6)
+            await asyncio.sleep(poll)
         return None
 
     async def _first_visible(self, page: PageAdapter, selectors: tuple[str, ...]) -> str | None:
@@ -269,7 +276,7 @@ class CaptchaSolver:
                 if answer:
                     await page.fill(_IMAGE_INPUT, answer)
                     await page.submit_firewall_form(input_selector=_IMAGE_INPUT)
-                    await asyncio.sleep(3.0)
+                    await asyncio.sleep(ccfg.submit_wait_sec)
                     if await self._passed(page):
                         self._store_sample(challenge, answer)
                         await self.telegram.send_text(f"✅ Принято! Капча решена ответом <code>{answer}</code>. "
@@ -287,7 +294,7 @@ class CaptchaSolver:
                 if pending.done.is_set():
                     pending.done.clear()
                     await page.reload()
-                    await asyncio.sleep(2.5)
+                    await asyncio.sleep(ccfg.reload_wait_sec)
                     if await self._passed(page):
                         await self.telegram.send_text("✅ Подтвердил: капча пройдена. Продолжаю работу.")
                         return SolveResult(solved=True, method="manual", detail="подтверждено кнопкой")

@@ -4,7 +4,7 @@ from avito_watch.models import CaptchaVariant, PageState
 from avito_watch.parser.item import parse_item
 from avito_watch.parser.listing import next_page_url, parse_listing
 from avito_watch.parser.state import detect_state, has_firewall_form, page_title
-from conftest import load_html, make_card, make_listing_page
+from tests.conftest import load_html, make_card, make_listing_page
 
 
 def test_states():

@@ -3,8 +3,8 @@ import time
 
 import pytest
 
-from avito_watch.models import CycleReport, PageState, SourceStatus
-from avito_watch.pipeline import Pipeline
+from avito_watch.models import PageState, SourceStatus
+from avito_watch.pipeline import CycleReport, Pipeline
 from avito_watch.watcher import Watcher
 
 
