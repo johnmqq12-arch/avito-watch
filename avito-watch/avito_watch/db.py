@@ -346,8 +346,11 @@ class Database:
             "notified": one("SELECT COUNT(*) FROM listings WHERE notified_at IS NOT NULL"),
             "pending": one("SELECT COUNT(*) FROM listings WHERE notified_at IS NULL"),
             "captcha_total": one("SELECT COUNT(*) FROM captcha_events"),
-            "captcha_solved_auto": one("SELECT COUNT(*) FROM captcha_events WHERE solved=1 AND method!='manual'"),
-            "captcha_solved_manual": one("SELECT COUNT(*) FROM captcha_events WHERE solved=1 AND method='manual'"),
+            # 'manual' и 'manual-answer' — оба решены человеком, автоматикой считаем остальное
+            "captcha_solved_auto": one("SELECT COUNT(*) FROM captcha_events WHERE solved=1 "
+                                       "AND method NOT IN ('manual','manual-answer')"),
+            "captcha_solved_manual": one("SELECT COUNT(*) FROM captcha_events WHERE solved=1 "
+                                         "AND method IN ('manual','manual-answer')"),
             "last24h_new": one(f"SELECT COUNT(*) FROM listings WHERE first_seen_at>{time.time() - 86400}"),
             "db_size_mb": round(self.path.stat().st_size / 1e6, 2) if self.path.exists() else 0,
         }

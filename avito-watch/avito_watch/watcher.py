@@ -22,7 +22,7 @@ from .utils import jitter
 
 log = logging.getLogger(__name__)
 
-HEARTBEAT_PATH = Path("data/heartbeat.json")
+HEARTBEAT_PATH = Path("data/heartbeat.json")   # значение по умолчанию, задаётся конфигом
 
 
 class Watcher:
@@ -165,10 +165,13 @@ class Watcher:
                     for s in self.db.list_sources()
                 ],
             }
+            path = Path(self.cfg.storage.heartbeat_path or HEARTBEAT_PATH)
             try:
-                HEARTBEAT_PATH.parent.mkdir(parents=True, exist_ok=True)
-                HEARTBEAT_PATH.write_text(json.dumps(payload, ensure_ascii=False, indent=2),
-                                          encoding="utf-8")
+                path.parent.mkdir(parents=True, exist_ok=True)
+                # пишем атомарно: healthcheck не должен увидеть недописанный файл
+                tmp = path.with_suffix(path.suffix + ".tmp")
+                tmp.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+                tmp.replace(path)
             except OSError as exc:
                 log.debug("heartbeat: %s", exc)
             await self._sleep(self.cfg.watch.watchdog_sec)

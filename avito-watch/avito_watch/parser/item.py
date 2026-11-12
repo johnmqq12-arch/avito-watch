@@ -106,7 +106,8 @@ def _fill_from_dom(listing: Listing, soup: BeautifulSoup) -> None:
         if node is not None:
             listing.description = clean_text(node.get_text("\n", strip=True))
     if listing.price is None:
-        node = (soup.select_one('[data-marker="item-price"]')
+        node = (soup.select_one('[data-marker="item-view/item-price"]')
+                or soup.select_one('[data-marker="item-price"]')
                 or soup.select_one('[itemprop="price"]')
                 or soup.select_one('meta[property="product:price:amount"]'))
         if node is not None:

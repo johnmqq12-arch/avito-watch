@@ -320,7 +320,8 @@ class CaptchaSolver:
     async def _save_session(self) -> None:
         if self.engine is not None:
             try:
-                await self.engine.save_session("data/session.json")
+                path = getattr(self.engine, "session_path", "data/session.json")
+                await self.engine.save_session(path)
             except Exception as exc:
                 log.debug("save_session после капчи: %s", exc)
 

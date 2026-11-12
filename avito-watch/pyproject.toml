@@ -33,4 +33,8 @@ include = ["avito_watch*"]
 asyncio_mode = "auto"
 testpaths = ["tests"]
 pythonpath = ["."]
+addopts = "-m 'not browser'"
+markers = [
+    "browser: интеграционные тесты на настоящем Chromium (pytest -m browser)",
+]
 filterwarnings = ["ignore::DeprecationWarning"]

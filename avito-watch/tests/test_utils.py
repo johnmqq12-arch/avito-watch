@@ -98,3 +98,16 @@ def test_text_helpers():
     assert clean_text("  много\u00a0 пробелов  ") == "много пробелов"
     assert truncate("одно два три четыре", 12).endswith("…")
     assert truncate("коротко", 100) == "коротко"
+
+def test_strip_tracking_removes_avito_context_blob():
+    url = "https://www.avito.ru/moskva/iphone_1234567890?context=H4sIAAAAAAAA_verylongblob&iid=42"
+    assert strip_tracking(url) == "https://www.avito.ru/moskva/iphone_1234567890"
+
+
+def test_strip_tracking_keeps_search_filters():
+    url = "https://www.avito.ru/moskva?q=iphone&p=2&f=ASgBAgICAUT&user=1&utm_source=telegram"
+    assert strip_tracking(url) == "https://www.avito.ru/moskva?q=iphone&p=2&f=ASgBAgICAUT&user=1"
+
+
+def test_strip_tracking_without_query_is_noop():
+    assert strip_tracking("https://www.avito.ru/moskva") == "https://www.avito.ru/moskva"

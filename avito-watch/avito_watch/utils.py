@@ -237,11 +237,29 @@ def item_id_from_url(url: str | None) -> str | None:
     return m.group(1) if m else None
 
 
+_TRACKING_PARAMS = {
+    "utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content", "utm_id",
+    "slocation", "async", "context", "iid", "nav_from", "referrer", "rnd",
+    "fbclid", "gclid", "yclid", "ymclid", "ysclid", "clid", "_openstats",
+}
+
+
 def strip_tracking(url: str) -> str:
-    """Убирает мусорные параметры, оставляя рабочие (?q=, ?p= и фильтры)."""
-    drop = ("utm_source", "utm_medium", "utm_campaign", "utm_term", "utm_content", "slocation", "async")
+    """Убирает мусорные параметры, оставляя рабочие (?q=, ?p=, ?f= и фильтры).
+
+    Важно: ?context=… у Авито — это простыня base64 на пару килобайт. Если её
+    не срезать, ссылка в Telegram разъезжается, а одно и то же объявление
+    выглядит как разные URL.
+    """
     if "?" not in url:
         return url
     base, query = url.split("?", 1)
-    kept = [p for p in query.split("&") if p and p.split("=")[0] not in drop]
+    kept = []
+    for part in query.split("&"):
+        if not part:
+            continue
+        key = part.split("=")[0]
+        if key in _TRACKING_PARAMS or key.startswith("utm_"):
+            continue
+        kept.append(part)
     return base + ("?" + "&".join(kept) if kept else "")

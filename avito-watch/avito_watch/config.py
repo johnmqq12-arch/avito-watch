@@ -124,6 +124,7 @@ class WatchConfig:
 class StorageConfig:
     db_path: str = "data/avito.db"
     captcha_dir: str = "data/captcha"
+    heartbeat_path: str = "data/heartbeat.json"   # по нему Docker healthcheck понимает, что мы живы
     keep_raw_json: bool = True
     vacuum_every_hours: int = 24
 
@@ -196,6 +197,8 @@ class Config:
         w.enrich_items = _as_bool(_env("AW_ENRICH", w.enrich_items))
         w.seed_existing = _as_bool(_env("AW_SEED_EXISTING", w.seed_existing))
         s.db_path = _env("AW_DB_PATH", s.db_path) or s.db_path
+        s.captcha_dir = _env("AW_CAPTCHA_DIR", s.captcha_dir) or s.captcha_dir
+        s.heartbeat_path = _env("AW_HEARTBEAT_PATH", s.heartbeat_path) or s.heartbeat_path
         lg.level = _env("AW_LOG_LEVEL", lg.level) or lg.level
 
     def _normalize(self) -> None:
