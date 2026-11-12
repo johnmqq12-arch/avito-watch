@@ -1,0 +1,2 @@
+# Только для экспериментального engine=http (без Playwright)
+curl_cffi>=0.7

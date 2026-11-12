@@ -1,0 +1,96 @@
+# ─────────────────────────────────────────────────────────────
+# Avito Watch — конфигурация. Скопируйте: cp config.example.yaml config.yaml
+# Секреты (токен, chat_id, прокси) держите в .env — они перекрывают YAML.
+# ─────────────────────────────────────────────────────────────
+
+telegram:
+  enabled: true
+  send_photos: true
+  description_limit: 700        # сколько символов описания влезает в подпись к фото
+  full_description: false       # true = полное описание отдельным сообщением
+  notify_price_drop: true       # сообщать о снижении цены у уже найденных объявлений
+  price_drop_min_pct: 5
+  commands_enabled: true        # управление ботом: /add, /pause, /interval, ...
+  silent_hours: ""              # '23:00-08:00' — сообщения без звука
+
+browser:
+  engine: browser               # browser (надёжно) | http (экспериментально, только с прогретой сессией)
+  headless: true                # в Docker рекомендуется false + Xvfb/noVNC
+  user_data_dir: data/profile   # здесь живут cookies файрвола — не удаляйте
+  locale: ru-RU
+  timezone: Europe/Moscow
+  viewport_width: 1440
+  viewport_height: 900
+  nav_timeout_sec: 45
+  pow_wait_sec: 30              # proof-of-work: ждём, НЕ перезагружаем страницу
+  block_resources: true         # не грузить картинки/шрифты на выдаче (быстрее и меньше трафика)
+  humanize: true                # движения мыши, скролл, паузы
+  page_delay_sec: 3             # пауза между страницами одного источника
+  restart_after_pages: 120      # профилактический перезапуск браузера
+  cdp_endpoint: ""              # внешний браузер по CDP, если используете
+
+captcha:
+  auto_solve: true              # локальные попытки без внешних сервисов
+  max_auto_attempts: 2
+  notify: true                  # ВСЕГДА сообщать вам о капче
+  notify_cooldown_sec: 300
+  manual_wait_sec: 1800         # 30 минут ждём вас, потом пауза источника
+  poll_interval_sec: 5
+  pause_source_on_captcha: true
+  ocr_backend: auto             # auto | ddddocr | onnx | none
+  onnx_model_path: models/captcha.onnx
+  onnx_charset: "0123456789abcdefghijklmnopqrstuvwxyz"
+  ocr_variants: 3
+  save_samples: true            # копить датасет ваших ответов для дообучения
+  slider_enabled: true
+  slider_max_tries: 3
+  slider_gap_method: auto       # auto | template | edge
+  manual_url: ""                # кнопка «Открыть браузер» → noVNC
+  manual_hint: ""
+
+watch:
+  default_interval_sec: 300     # интервал по умолчанию (у каждой ссылки может быть свой)
+  min_interval_sec: 60          # ниже — предупреждение о риске бана
+  interval_jitter: 0.2          # ±20% к интервалу, чтобы не выглядеть метрономом
+  pages_per_source: 1
+  max_concurrent_pages: 1       # Авито лимитит по IP: 1 — правильно
+  seed_existing: true           # первый проход: только фиксация, без 50 старых объявлений в чат
+  enrich_items: true            # описание + точная дата берутся со страницы объявления
+  enrich_max_per_cycle: 10
+  enrich_delay_sec: 4
+  max_new_per_cycle: 25
+  error_backoff_sec: 120
+  error_backoff_max_sec: 1800
+  blocked_backoff_sec: 900      # «подождите немного и обновите страницу» = нужен другой IP
+  notify_backlog: true
+  watchdog_sec: 60
+
+storage:
+  db_path: data/avito.db        # SQLite, ничего устанавливать не нужно
+  captcha_dir: data/captcha
+  keep_raw_json: true
+
+logging:
+  level: INFO
+  file: data/avito-watch.log
+  max_bytes: 5000000
+  backups: 3
+
+# ─────────────────────────────────────────────────────────────
+# Ссылки. Можно держать здесь, можно добавлять на ходу через /add в Telegram.
+# Возьмите URL прямо из адресной строки после настройки фильтров на Авито.
+# ─────────────────────────────────────────────────────────────
+sources:
+  - url: "https://www.avito.ru/moskva/telefony/mobilnye_telefony/apple-ASgBAgICAkS0wA3OqzmwwQ2I_Dc"
+    name: "iPhone Москва"
+    interval_sec: 240
+    pages: 1
+    seed_existing: true
+    max_price: 90000
+    keywords_exclude: ["запчасти", "разбит", "восстановленный", "копия"]
+
+  - url: "https://www.avito.ru/sankt-peterburg?q=velosiped+trek"
+    name: "Велосипед Trek СПб"
+    interval_sec: 600
+    pages: 2
+    min_price: 15000

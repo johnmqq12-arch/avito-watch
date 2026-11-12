@@ -1,0 +1,26 @@
+services:
+  avito-watch:
+    build: .
+    container_name: avito-watch
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      # Браузер «видимый» внутри Xvfb — чтобы вы могли пройти капчу через noVNC.
+      AW_HEADLESS: "0"
+      AW_MANUAL_URL: "${AW_MANUAL_URL:-http://localhost:6080/vnc.html?autoconnect=1&resize=scale}"
+      VNC_PASSWORD: "${VNC_PASSWORD:-}"
+      TZ: "Europe/Moscow"
+    volumes:
+      - ./data:/app/data                 # БД, профиль браузера, логи, скриншоты капчи
+      - ./config.yaml:/app/config.yaml   # ваши ссылки и настройки
+    ports:
+      # noVNC только на localhost машины. Для доступа с телефона/VPS:
+      # замените на "6080:6080" и ОБЯЗАТЕЛЬНО задайте VNC_PASSWORD в .env
+      - "127.0.0.1:6080:6080"
+    shm_size: "1gb"                      # Chromium не любит маленький /dev/shm
+    stop_grace_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
